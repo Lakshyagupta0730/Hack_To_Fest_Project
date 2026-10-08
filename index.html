@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paper Explorer - Grounded AI Research Assistant</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header class="header-wrap">
+        <div class="header-left">
+            <h1>📄 Scroll Patrol</h1>
+            <p class="subtitle">Upload academic research papers or explore seminal benchmarks. Get grounded answers with verifiable page & section citations.</p>
+        </div>
+        <div class="header-badges">
+            <button id="btn-api-key" class="badge" type="button" style="cursor: pointer; font-family: inherit;" title="Configure OpenRouter API Key (Optional)">
+                🔑 API Key (Optional)
+            </button>
+            <span id="backend-status" class="badge badge-amber">
+                <span class="pulse-dot"></span> Backend Connecting...
+            </span>
+            <span id="active-paper-badge" class="badge badge-blue">
+                📄 No Paper Loaded
+            </span>
+        </div>
+    </header>
+
+    <hr>
+
+    <!-- Section 1: Document Selection & Ingestion -->
+    <section id="section-input">
+        <h2><span>📥</span> 1. Document Input & Ingestion</h2>
+        <p>Choose one of the pre-loaded seminal AI papers or upload your own PDF research paper to create vector embeddings with <strong>SentenceTransformers (all-MiniLM-L6-v2)</strong> and store them in <strong>ChromaDB</strong>.</p>
+
+        <div class="grid-2col">
+            <!-- Sample Papers Option -->
+            <div class="sub-card">
+                <div>
+                    <h3>📚 Pre-Loaded Benchmark Papers</h3>
+                    <p style="font-size: 0.9rem;">Instantly explore foundational papers without uploading:</p>
+                    <label for="sample-select">Choose Benchmark Paper:</label>
+                    <select id="sample-select">
+                        <option value="transformer">Attention Is All You Need (Vaswani et al. - Transformers)</option>
+                        <option value="resnet">Deep Residual Learning for Image Recognition (He et al. - ResNet)</option>
+                        <option value="ddpm">Denoising Diffusion Probabilistic Models (Ho et al. - DDPM)</option>
+                    </select>
+                    <p id="sample-desc" style="font-size: 0.85rem; margin-top: 10px; color: #475569; min-height: 48px;">
+                        Introduced the Transformer architecture, replacing RNNs with Multi-Head Self-Attention for sequence modeling.
+                    </p>
+                </div>
+                <button id="btn-load-sample" type="button" style="margin-top: 14px;">
+                    <span id="load-sample-text">🚀 Load Benchmark Paper</span>
+                </button>
+            </div>
+
+            <!-- Custom Upload Option -->
+            <div class="sub-card">
+                <div>
+                    <h3>📤 Upload Your Research Paper</h3>
+                    <p style="font-size: 0.9rem;">Upload any PDF paper (arXiv, IEEE, NeurIPS, etc.):</p>
+                    
+                    <div id="drop-zone" class="drop-zone">
+                        <span class="drop-zone-icon">📄</span>
+                        <strong>Click or Drag & Drop PDF here</strong>
+                        <p id="selected-file-name" style="font-size: 0.85rem; margin-top: 4px; color: #64748b;">No file selected (Max 50MB)</p>
+                        <input type="file" id="pdf-file-input" accept=".pdf" style="display: none;">
+                    </div>
+                </div>
+                <button id="btn-upload-file" type="button" disabled style="margin-top: 14px;">
+                    <span id="upload-file-text">⚡ Upload & Index Paper</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Ingestion Status Bar (Hidden by default) -->
+        <div id="ingestion-status-box" style="display: none; margin-top: 20px; padding: 14px 18px; border-radius: 12px; background: rgba(37,99,235,0.08); border: 1px solid rgba(37,99,235,0.25);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="spinner spinner-dark"></span>
+                <div>
+                    <strong id="ingestion-step-title" style="color: #1e40af;">Processing Document...</strong>
+                    <p id="ingestion-step-desc" style="margin: 0; font-size: 0.85rem;">Extracting text pages, parsing sections, and generating vector embeddings...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 2: Active Document Overview (Dynamically shown) -->
+    <section id="section-overview" style="display: none;">
+        <h2><span>📖</span> 2. Document Overview & Outline</h2>
+        
+        <div class="paper-summary-card">
+            <h3 id="current-paper-title" class="paper-title">Attention Is All You Need</h3>
+            
+            <div class="paper-stats">
+                <span id="stat-pages" class="stat-pill">📄 15 Pages</span>
+                <span id="stat-chunks" class="stat-pill">🧩 81 Chunks</span>
+                <span id="stat-sections" class="stat-pill">📑 22 Detected Sections</span>
+                <span class="stat-pill" style="color: #059669;">✅ ChromaDB Indexed</span>
+            </div>
+
+            <!-- Detected Sections / Table of Contents -->
+            <h4 style="margin-bottom: 4px;">Detected Sections & Outline:</h4>
+            <div id="sections-pill-container" class="section-pills-list">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Quick Questions -->
+            <h4 style="margin-top: 18px; margin-bottom: 6px;">💡 Suggested Questions (Click to Ask):</h4>
+            <div id="suggested-questions-container" class="prompt-chips-wrapper">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 3: Grounded AI Q&A Assistant -->
+    <section id="section-qa">
+        <h2><span>🤖</span> 3. Grounded Q&A Assistant</h2>
+        <p>Ask in-depth questions regarding model architecture, equations, training parameters, ablation studies, or benchmark tables. Every answer provides grounded page and section citations.</p>
+
+        <!-- Chat History Stream -->
+        <div id="chat-stream" class="chat-container">
+            <div class="chat-message-assistant">
+                <div class="msg-header">
+                    <span>🤖 Paper Explorer Assistant</span>
+                    <span style="font-size: 0.75rem; color: #94a3b8;">System</span>
+                </div>
+                <div class="markdown-body">
+                    <p>Welcome! Load a benchmark paper above or upload your own PDF to start exploring.</p>
+                    <p>Once indexed, ask questions like:</p>
+                    <ul>
+                        <li><em>"What is the mathematical equation for attention?"</em></li>
+                        <li><em>"What datasets and hyper-parameters were used for training?"</em></li>
+                        <li><em>"What are the main quantitative results compared to baselines?"</em></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Question Form -->
+        <form id="qa-form">
+            <label for="user-question">Ask a question about the active paper:</label>
+            <textarea 
+                id="user-question" 
+                name="user-question" 
+                rows="3" 
+                placeholder="e.g., What is the mathematical formulation of Scaled Dot-Product Attention? (Press Enter to submit, Shift+Enter for new line)"
+            ></textarea>
+            
+            <div class="action-row">
+                <button type="submit" id="btn-submit-question">
+                    <span id="submit-btn-text">💬 Ask Assistant</span>
+                </button>
+                <button type="button" id="btn-clear-chat" class="btn-secondary">
+                    🗑️ Clear Chat
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast-msg"></div>
+
+    <script src="index.js"></script>
+</body>
+</html>
